@@ -13,6 +13,7 @@ class PhotoViewController: UIViewController, UIScrollViewDelegate
     let dateLabel = UILabel()
     let scrollView = UIScrollView()
     let imageView = UIImageView()
+    let request = Request()
 
     override func viewDidLoad()
     {
@@ -28,7 +29,9 @@ class PhotoViewController: UIViewController, UIScrollViewDelegate
     func setupDateLabel()
     {
         view.addSubview(dateLabel)
-        dateLabel.text = "There will be date"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        dateLabel.text = formatter.string(from: photoArray[myIndex].date)
         dateLabel.textColor = .white
         dateLabel.textAlignment = .center
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -60,12 +63,32 @@ class PhotoViewController: UIViewController, UIScrollViewDelegate
         imageView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor).isActive = true
         imageView.leftAnchor.constraint(equalTo: scrollView.leftAnchor).isActive = true
         imageView.rightAnchor.constraint(equalTo: scrollView.rightAnchor).isActive = true
-        imageView.imageFromServerURL(photoArray[myIndex].full, placeHolder: nil)
-        guard let image = imageView.image else { return }
-        scrollView.contentSize = image.size
+        guard let url = URL(string: photoArray[myIndex].small) else { return }
+        request.downloadImage(url: url, completion: { (image, error) in
+            if let error = error as? URLError, error.code == URLError.Code.notConnectedToInternet
+            {
+                DispatchQueue.main.async
+                {
+                    if let image = imageCache.object(forKey: photoArray[myIndex].small as NSString)
+                    {
+                        self.imageView.image = image
+                        self.scrollView.contentSize = image.size
+                    }
+                }
+            }
+            else if let image = image
+            {
+                DispatchQueue.main.async
+                {
+                    self.imageView.image = image
+                    self.scrollView.contentSize = image.size
+                }
+            }
+        })
     }
     
-    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+    func viewForZooming(in scrollView: UIScrollView) -> UIView?
+    {
         return imageView
     }
 }
